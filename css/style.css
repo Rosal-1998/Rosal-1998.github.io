@@ -103,3 +103,42 @@ p1{
 	float: left;
 	width: 85%;
 }
+
+
+
+.title-more{
+	display: table;
+	padding: 0 .5rem;
+	margin: -2.5rem 5rem 2rem !important;
+	font-size: 1rem;
+	background-color: #fff
+	
+}
+
+#markdown-content {
+				width: 80%;
+				margin: 0 auto;
+				padding: 20px;
+				border: 1px solid #ccc;
+				background-color: #f9f9f9;
+			}
+
+
+.md-box{
+	width: 1180px;
+	height: 1000px;
+	margin: 20px auto;
+}
+.md-left{
+	float: left;
+	width: 280px;
+	height: 900px;
+	color: white;
+	/* background-color: rgb(84, 141, 212); */
+}
+
+.md-right{
+	float: right;
+	width: 780px;
+	height: 900px;
+}

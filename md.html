@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<link href="css/neo.css" rel="stylesheet" />
+		<link href="css/style.css" rel="stylesheet" />
+		<script src="javascript/marked.js"></script>
+		<title>RosalLiao</title>
+	</head>
+	<body>
+		<section class="showcase">
+			<section class="nes-container with-title md-box">
+				<h1 class="title"><a href="index.html">简历</a></h1>
+				<h1 class="title title-more"><a href="md.html">文档</a></h1>
+				<div class="md-left">
+					<div id="markdown-list">
+						
+					</div>
+				</div>
+				<div class="md-right">
+					<div id="markdown-content"></div>
+				</div>
+				
+			</section>
+		</section>
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+		<script>
+		// 	const markdownFileUrl = 'https://raw.githubusercontent.com/Rosal-1998/iron-Notes/main/README.md';
+		
+		// 	// 读取并解析 Markdown 文件
+		// 	fetch(markdownFileUrl)
+		// 		.then(response => response.text())
+		// 		.then(markdown => {
+		// 			// 将 Markdown 转换为 HTML
+		// 			console.log(markdown)
+		// 			const htmlContent = marked.parse(markdown);
+		
+		// 			// 将 HTML 插入到页面中
+		// 			document.getElementById('markdown-content').innerHTML = htmlContent;
+		// 		})
+		// 		.catch(error => {
+		// 			console.error('Error fetching Markdown file:', error);
+		// 		});
+		const markdownFiles = [
+		            { title: "Iron Note", url: "https://raw.githubusercontent.com/Rosal-1998/iron-Notes/main/README.md" },
+					{ title: "DataToChart", url: "https://raw.githubusercontent.com/Rosal-1998/DataToChart/main/README.md" },
+		            // 在这里添加更多的 Markdown 文件
+		        ];
+		
+		        function loadMarkdown(url) {
+		            fetch(url)
+		                .then(response => response.text())
+		                .then(markdown => {
+		                    const htmlContent = marked.parse(markdown);
+		                    document.getElementById('markdown-content').innerHTML = htmlContent;
+		                })
+		                .catch(error => {
+		                    console.error('Error fetching Markdown file:', error);
+		                });
+		        }
+		
+		        // 生成 Markdown 文件列表
+		        function generateMarkdownList() {
+		            const list = document.getElementById('markdown-list');
+		            markdownFiles.forEach(file => {
+		                const fileLink = document.createElement('a');
+		                fileLink.href = '#';
+		                fileLink.textContent = file.title;
+		                fileLink.onclick = () => loadMarkdown(file.url);
+		                const listItem = document.createElement('div');
+		                listItem.appendChild(fileLink);
+		                list.appendChild(listItem);
+		            });
+		        }
+		
+		        generateMarkdownList();
+		</script>
+	</body>
+</html>
+
+
