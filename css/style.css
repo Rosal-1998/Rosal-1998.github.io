@@ -1,8 +1,9 @@
 body {
- 
+  background: url(../images/bg.jpg) repeat fixed center;
   font-family: "CustomFont", sans-serif;
 }
 .resume-box{
+	background-color: white;
 	width: 1180px;
 	height: 1000px;
 	margin: 20px auto;
@@ -125,6 +126,7 @@ p1{
 
 
 .md-box{
+	background-color: white;
 	width: 1180px;
 	height: 1000px;
 	margin: 20px auto;
