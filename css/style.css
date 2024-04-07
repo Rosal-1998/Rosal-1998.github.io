@@ -104,9 +104,6 @@ p1{
 	float: left;
 	width: 85%;
 }
-
-
-
 .title-more{
 	display: table;
 	padding: 0 .5rem;
@@ -114,6 +111,15 @@ p1{
 	font-size: 1rem;
 	background-color: #fff
 	
+}
+
+
+.title-lr{
+	display: table;
+	padding: 0 .5rem;
+	margin: -3.5rem 10rem 2rem !important;
+	font-size: 1rem;
+	background-color: #fff
 }
 
 #markdown-content {
@@ -143,4 +149,8 @@ p1{
 	float: right;
 	width: 780px;
 	height: 900px;
+}
+#markdown-content{
+	max-height: 800px; /* 或者你希望的最大高度 */
+	    overflow-y: auto; /* 当内容超出指定高度时显示垂直滚动条 */
 }

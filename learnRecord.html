@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<link href="css/neo.css" rel="stylesheet" />
+		<link href="css/style.css" rel="stylesheet" />
+		<script src="javascript/marked.js"></script>
+		<title>RosalLiao</title>
+	</head>
+	<body>
+		<section class="showcase">
+			<section class="nes-container with-title md-box">
+				<h1 class="title"><a href="index.html">简历</a></h1>
+				<h1 class="title title-more"><a href="md.html">文档</a></h1>
+				<h1 class="title title-lr"><a href="learnRecord.html">正在学习</a></h1>
+				
+				<div id="markdown-content"></div>
+			</section>
+		</section>
+		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+		<script>
+		    const url = "https://raw.githubusercontent.com/Rosal-1998/LearnRecord/main/README.md"
+		
+		    function loadMarkdown(url) {
+		        fetch(url)
+		            .then(response => response.text())
+		            .then(markdown => {
+		                const htmlContent = marked.parse(markdown);
+		                document.getElementById('markdown-content').innerHTML = htmlContent;
+		            })
+		            .catch(error => {
+		                console.error('Error fetching Markdown file:', error);
+		            });
+		    }
+		    loadMarkdown(url);
+		</script>
+	</body>
+</html>
+
+
