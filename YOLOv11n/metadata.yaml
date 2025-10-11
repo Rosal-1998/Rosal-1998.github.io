@@ -1,0 +1,25 @@
+description: Ultralytics YOLO11n model trained on /content/drive/MyDrive/ultralytics/ultralytics/data/neu-det.yaml
+author: Ultralytics
+date: '2025-10-11T08:34:08.651022'
+version: 8.3.209
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 640
+- 640
+names:
+  0: crazing
+  1: inclusion
+  2: patches
+  3: pitted_surface
+  4: rolled-in_scale
+  5: scratches
+args:
+  batch: 1
+  half: false
+  int8: false
+  nms: false
+channels: 3
