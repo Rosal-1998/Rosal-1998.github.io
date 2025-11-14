@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>钢筋计数系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+  <style>
+    :root {
+      --primary-color: #4361ee;
+      --secondary-color: #3f37c9;
+      --accent-color: #4cc9f0;
+      --success-color: #4ade80;
+      --warning-color: #f59e0b;
+      --error-color: #ef4444;
+      --light-color: #f8f9fa;
+      --dark-color: #212529;
+      --gray-color: #6c757d;
+      --border-radius: 8px;
+      --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: var(--dark-color);
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+
+    h1 {
+      color: var(--primary-color);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      color: var(--gray-color);
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+      padding: 25px;
+      margin-bottom: 25px;
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      margin-bottom: 15px;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title i {
+      font-size: 1.5rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: -9999px;
+    }
+
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background-color: var(--primary-color);
+      color: white;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .file-input-label:hover {
+      background-color: var(--secondary-color);
+      transform: translateY(-2px);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--secondary-color);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background-color: var(--gray-color);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: #5a6268;
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+    }
+
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .canvas-container {
+      position: relative;
+      background-color: white;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--box-shadow);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .status-container {
+      background-color: #e9ecef;
+      border-radius: var(--border-radius);
+      padding: 15px;
+    }
+
+    .status-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--gray-color);
+    }
+
+    #status {
+      font-weight: 500;
+      color: var(--dark-color);
+      min-height: 24px;
+    }
+
+    .time-info {
+      background-color: #e7f5ff;
+      border-left: 4px solid var(--accent-color);
+      padding: 15px;
+      border-radius: var(--border-radius);
+    }
+
+    .time-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--primary-color);
+    }
+
+    .stats {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+      padding: 15px;
+      background-color: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--gray-color);
+      margin-top: 5px;
+    }
+
+    .loading {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .detection-results {
+      margin-top: 20px;
+    }
+
+    .results-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e9ecef;
+      border-radius: var(--border-radius);
+      padding: 10px;
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-class {
+      font-weight: 500;
+    }
+
+    .result-confidence {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      padding: 20px;
+      color: var(--gray-color);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>钢筋计数检测应用</h1>
+      <p class="subtitle">基于 YOLOv11 模型</p>
+    </header>
+
+    <div class="card">
+      <h2 class="card-title">
+        <i>📁</i> 图像选择与处理
+      </h2>
+      <div class="controls">
+        <div class="file-input-wrapper">
+          <input type="file" id="imageUpload" accept="image/*">
+          <label for="imageUpload" class="file-input-label">
+            <i>📷</i> 选择图像
+          </label>
+        </div>
+        <button id="detectBtn" class="btn btn-primary" disabled>
+          <i>🔍</i> 执行检测
+        </button>
+        <button id="clearBtn" class="btn btn-secondary">
+          <i>🗑️</i> 清除结果
+        </button>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <h2 class="card-title">
+          <i>🖼️</i> 检测结果可视化
+        </h2>
+        <div class="canvas-container">
+          <canvas id="canvas" width="640" height="640"></canvas>
+          <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p>正在处理图像，请稍候...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <div class="card">
+          <h2 class="card-title">
+            <i>📊</i> 检测统计
+          </h2>
+          <div class="stats">
+            <div class="stat-item">
+              <div class="stat-value" id="detectedCount">0</div>
+              <div class="stat-label">检测到目标</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="detectionTime">0ms</div>
+              <div class="stat-label">检测时间</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="modelStatus">-</div>
+              <div class="stat-label">模型状态</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">
+            <i>ℹ️</i> 状态信息
+          </h2>
+          <div class="status-container">
+            <div class="status-title">当前状态:</div>
+            <div id="status">等待加载模型...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">
+            <i>⏱️</i> 时间信息
+          </h2>
+          <div class="time-info" id="timeInfo" style="display: none;">
+            <div class="time-title">检测时间统计:</div>
+            <div id="timeDetails">暂无数据</div>
+          </div>
+        </div>
+
+        <div class="card detection-results">
+          <h2 class="card-title">
+            <i>📋</i> 检测结果
+          </h2>
+          <div class="results-list" id="resultsList">
+            <div class="no-results">暂无检测结果</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>TensorFlow.js 目标检测演示 &copy; 2023</p>
+    </footer>
+  </div>
+
+  <script>
+    // 全局变量
+    let model = null;
+    let originalImage = null;
+    let canvasContext = null;
+    const classNames = ['rebar'];
+
+    // 初始化
+    async function init() {
+      try {
+        // 初始化画布
+        const canvas = document.getElementById('canvas');
+        canvasContext = canvas.getContext('2d');
+
+        // 加载模型
+        await loadModel();
+        document.getElementById('detectBtn').disabled = false;
+        document.getElementById('modelStatus').textContent = '已加载';
+        updateStatus('模型加载完成，请选择图片');
+
+      } catch (error) {
+        updateStatus(`初始化失败: ${error.message}`);
+        console.error(error);
+      }
+    }
+
+    // 加载模型
+    async function loadModel() {
+      const MODEL_URL = 'https://rosal-1998.github.io/count-yolov11n/model.json';
+      model = await tf.loadGraphModel(MODEL_URL);
+    }
+
+    // 处理图片上传
+    document.getElementById('imageUpload').addEventListener('change', async (e) => {
+      if (e.target.files.length === 0) return;
+      try {
+        // 显示加载指示器
+        showLoadingIndicator();
+
+        // 加载图片
+        const image = await loadImage(e.target.files[0]);
+        originalImage = image;
+
+        // 绘制原始图片
+        const canvas = document.getElementById('canvas');
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        canvasContext.drawImage(image, 0, 0, canvas.width, canvas.height);
+        updateStatus('图片加载完成，点击"执行检测"按钮');
+        
+        // 隐藏时间信息
+        document.getElementById('timeInfo').style.display = 'none';
+        
+        // 隐藏加载指示器
+        hideLoadingIndicator();
+      } catch (error) {
+        updateStatus(`图片加载失败: ${error.message}`);
+        console.error(error);
+        hideLoadingIndicator();
+      }
+    });
+
+    document.getElementById('detectBtn').addEventListener('click', async () => {
+      if (!originalImage) {
+        updateStatus('请先选择图片');
+        return;
+      }
+
+      try {
+        updateStatus('正在检测...');
+        showLoadingIndicator();
+        
+        // 记录开始时间
+        const startTime = performance.now();
+
+        // 预处理图片
+        const input = preprocessImage(originalImage);
+
+        // 执行推理
+        const predictions = await model.predict(input);
+        console.log('模型输出:', predictions);
+
+        // 获取数据（这会返回一个 Promise）
+        const outputPromise = predictions.data();
+
+        // 处理输出（等待 Promise 解析）
+        const results = await processYOLOv8Output(outputPromise, 640, 640);
+
+        // 记录结束时间
+        const endTime = performance.now();
+        const detectionTime = endTime - startTime;
+
+        console.log(`检测到 ${results.length} 个目标:`);
+        results.forEach((box, i) => {
+          console.log(`目标 ${i + 1}: 类别=${box.class}, 置信度=${box.score.toFixed(2)}, 坐标=[${box.box.join(', ')}]`);
+        });
+
+        // 绘制结果
+        drawResults(results);
+        updateStatus(`检测完成，找到 ${results.length} 个目标`);
+        
+        // 更新统计信息
+        document.getElementById('detectedCount').textContent = results.length;
+        document.getElementById('detectionTime').textContent = `${detectionTime.toFixed(0)}ms`;
+        
+        // 更新结果列表
+        updateResultsList(results);
+        
+        // 显示检测时间
+        displayDetectionTime(detectionTime);
+
+        // 清理
+        input.dispose();
+        predictions.dispose();
+        
+        // 隐藏加载指示器
+        hideLoadingIndicator();
+
+      } catch (error) {
+        updateStatus(`检测失败: ${error.message}`);
+        console.error(error);
+        hideLoadingIndicator();
+      }
+    });
+
+    // 清除结果
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+      document.getElementById('imageUpload').value = '';
+      originalImage = null;
+      updateStatus('结果已清除');
+      document.getElementById('timeInfo').style.display = 'none';
+      document.getElementById('detectedCount').textContent = '0';
+      document.getElementById('detectionTime').textContent = '0ms';
+      document.getElementById('resultsList').innerHTML = '<div class="no-results">暂无检测结果</div>';
+    });
+
+    // 显示加载指示器
+    function showLoadingIndicator() {
+      document.getElementById('loadingIndicator').style.display = 'flex';
+    }
+
+    // 隐藏加载指示器
+    function hideLoadingIndicator() {
+      document.getElementById('loadingIndicator').style.display = 'none';
+    }
+
+    // 显示检测时间
+    function displayDetectionTime(detectionTime) {
+      const timeInfoElement = document.getElementById('timeInfo');
+      const timeDetailsElement = document.getElementById('timeDetails');
+      
+      timeDetailsElement.innerHTML = `
+        总检测时间: ${detectionTime.toFixed(2)} 毫秒<br>
+        相当于: ${(detectionTime / 1000).toFixed(3)} 秒
+      `;
+      timeInfoElement.style.display = 'block';
+    }
+
+    // 更新结果列表
+    function updateResultsList(results) {
+      const resultsListElement = document.getElementById('resultsList');
+      
+      if (results.length === 0) {
+        resultsListElement.innerHTML = '<div class="no-results">未检测到目标</div>';
+        return;
+      }
+      
+      let html = '';
+      results.forEach((result, index) => {
+        html += `
+          <div class="result-item">
+            <span class="result-class">目标 ${index + 1}</span>
+            <span class="result-confidence">${(result.score * 100).toFixed(1)}%</span>
+          </div>
+        `;
+      });
+      
+      resultsListElement.innerHTML = html;
+    }
+
+    // 工具函数
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    function preprocessImage(image) {
+      // 调整图片大小
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 640;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, 640, 640)
+
+      const inputData = ctx.getImageData(0, 0, 640, 640)
+      tf_img = tf.browser.fromPixels(inputData);
+      const imgData = tf_img.div(255.0).expandDims().toFloat();
+      console.log('imgData', imgData)
+      return imgData
+    }
+
+    function drawResults(predictions) {
+      const canvas = document.getElementById('canvas');
+
+      // 重新绘制原始图片
+      canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+      canvasContext.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+
+      // 绘制检测框
+      predictions.forEach(pred => {
+        const [x1, y1, x2, y2] = pred.box;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        const score = Math.round(pred.score * 100);
+        const className = pred.label || `类别${pred.class}`;
+
+        // 绘制矩形
+        canvasContext.strokeStyle = '#00FF00';
+        canvasContext.lineWidth = 3;
+        canvasContext.strokeRect(x1, y1, w, h);
+
+        // 绘制标签背景
+        // canvasContext.fillStyle = 'rgba(0, 255, 0, 0.7)';
+        // const text = `${className} ${score}%`;
+        // canvasContext.font = '16px Arial';
+        // const textWidth = canvasContext.measureText(text).width;
+        // canvasContext.fillRect(x1, y1 - 25, textWidth + 10, 25);
+
+        // // 绘制标签文字
+        // canvasContext.fillStyle = '#000000';
+        // canvasContext.fillText(text, x1 + 5, y1 - 7);
+      });
+    }
+
+    function updateStatus(message) {
+      document.getElementById('status').textContent = message;
+    }
+
+    // 修改 processYOLOv8Output 函数中的 NMS 部分
+    const processYOLOv8Output = async (outputPromise, imageWidth, imageHeight) => {
+      try {
+        const float32Array = await outputPromise;
+        console.log('解析后的 Float32Array:', float32Array);
+
+        const numBoxes = 8400;
+        const boxes = [];
+
+        for (let index = 0; index < numBoxes; index++) {
+          const [class_id, prob] = [...Array(classNames.length).keys()]
+            .map((col) => [col, float32Array[8400 * (col + 4) + index]])
+            .reduce((accum, item) => (item[1] > accum[1] ? item : accum), [0, 0]);
+
+          if (prob < 0.2) continue;
+
+          const label = classNames[class_id];
+          const xc = float32Array[index];
+          const yc = float32Array[8400 + index];
+          const w = float32Array[2 * 8400 + index];
+          const h = float32Array[3 * 8400 + index];
+          const x1 = ((xc - w / 2) / 640) * imageWidth;
+          const y1 = ((yc - h / 2) / 640) * imageHeight;
+          const x2 = ((xc + w / 2) / 640) * imageWidth;
+          const y2 = ((yc + h / 2) / 640) * imageHeight;
+
+          // 创建统一格式的对象
+          boxes.push({
+            box: [x1, y1, x2, y2],  // 坐标格式统一为 [x1, y1, x2, y2]
+            score: prob,
+            class: class_id,
+            label: label
+          });
+        }
+
+        console.log('检测到的框数量:', boxes.length);
+
+        // 修正的 IOU 计算函数
+        function calculateIOU(boxA, boxB) {
+          const [ax1, ay1, ax2, ay2] = boxA.box;  // 从对象中提取坐标
+          const [bx1, by1, bx2, by2] = boxB.box;
+
+          const xOverlap = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1));
+          const yOverlap = Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+          const overlapArea = xOverlap * yOverlap;
+
+          const areaA = (ax2 - ax1) * (ay2 - ay1);
+          const areaB = (bx2 - bx1) * (by2 - by1);
+          const unionArea = areaA + areaB - overlapArea;
+
+          return overlapArea / unionArea;
+        }
+
+        // 修正的 NMS 函数
+        function applyNMS(boxes, iouThreshold = 0.3) {
+          // 按置信度排序
+          boxes.sort((a, b) => b.score - a.score);
+          const keepBoxes = [];
+
+          while (boxes.length > 0) {
+            const currentBox = boxes[0];
+            keepBoxes.push(currentBox);
+
+            // 过滤掉与当前框重叠度高的框
+            boxes = boxes.filter(box => {
+              const iou = calculateIOU(currentBox, box);
+              return iou <= iouThreshold;
+            });
+          }
+
+          return keepBoxes;
+        }
+
+        const finalBoxes = applyNMS(boxes, 0.3);
+        console.log('NMS后保留的框数量:', finalBoxes.length);
+
+        return finalBoxes;
+
+      } catch (error) {
+        console.error('处理输出时出错:', error);
+        return [];
+      }
+    };
+
+    // 初始化
+    init();
+  </script>
+</body>
+
+</html>
