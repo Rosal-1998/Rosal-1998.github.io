@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TensorFlow.js 目标检测演示</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.2.0"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      margin: 20px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    canvas {
+      border: 1px solid #ccc;
+      max-width: 100%;
+    }
+
+    #status {
+      margin-top: 10px;
+      color: #666;
+    }
+    
+    .time-info {
+      margin-top: 10px;
+      padding: 8px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>目标检测演示</h1>
+
+  <div class="controls">
+    <input type="file" id="imageUpload" accept="image/*">
+    <button id="detectBtn" disabled>执行检测</button>
+    <button id="clearBtn">清除结果</button>
+  </div>
+
+  <canvas id="canvas" width="640" height="640"></canvas>
+  <div id="status"></div>
+  <div id="timeInfo" class="time-info" style="display: none;"></div>
+
+  <script>
+    // 全局变量
+    let model = null;
+    let originalImage = null;
+    let canvasContext = null;
+    const classNames =  ['rebar']  
+
+    // 初始化
+    async function init() {
+      try {
+        // 初始化画布
+        const canvas = document.getElementById('canvas');
+        canvasContext = canvas.getContext('2d');
+
+        // 加载模型
+        await loadModel();
+        document.getElementById('detectBtn').disabled = false;
+        updateStatus('模型加载完成，请选择图片');
+
+      } catch (error) {
+        updateStatus(`初始化失败: ${error.message}`);
+        console.error(error);
+      }
+    }
+
+    // 加载模型
+    async function loadModel() {
+      const MODEL_URL = 'https://rosal-1998.github.io/count-yolov11n/model.json';
+      // const MODEL_URL = 'https://storage.googleapis.com/tfjs-models/tfjs/mnist_transfer_cnn_v1/model.json'
+      model = await tf.loadGraphModel(MODEL_URL);
+    }
+
+    // 处理图片上传
+    document.getElementById('imageUpload').addEventListener('change', async (e) => {
+      if (e.target.files.length === 0) return;
+      try {
+        // 加载图片
+        const image = await loadImage(e.target.files[0]);
+        originalImage = image;
+
+        // 绘制原始图片
+        const canvas = document.getElementById('canvas');
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        canvasContext.drawImage(image, 0, 0, canvas.width, canvas.height);
+        updateStatus('图片加载完成，点击"执行检测"按钮');
+        
+        // 隐藏时间信息
+        document.getElementById('timeInfo').style.display = 'none';
+      } catch (error) {
+        updateStatus(`图片加载失败: ${error.message}`);
+        console.error(error);
+      }
+    });
+
+   
+    document.getElementById('detectBtn').addEventListener('click', async () => {
+      if (!originalImage) {
+        updateStatus('请先选择图片');
+        return;
+      }
+
+      try {
+        updateStatus('正在检测...');
+        
+        // 记录开始时间
+        const startTime = performance.now();
+
+        // 预处理图片
+        const input = preprocessImage(originalImage);
+
+        // 执行推理
+        const predictions = await model.predict(input);
+        console.log('模型输出:', predictions);
+
+        // 获取数据（这会返回一个 Promise）
+        const outputPromise = predictions.data();
+
+        // 处理输出（等待 Promise 解析）
+        const results = await processYOLOv8Output(outputPromise, 640, 640);
+
+        // 记录结束时间
+        const endTime = performance.now();
+        const detectionTime = endTime - startTime;
+
+        console.log(`检测到 ${results.length} 个目标:`);
+        results.forEach((box, i) => {
+          console.log(`目标 ${i + 1}: 类别=${box.class}, 置信度=${box.score.toFixed(2)}, 坐标=[${box.box.join(', ')}]`);
+        });
+
+        // 绘制结果
+        drawResults(results);
+        updateStatus(`检测完成，找到 ${results.length} 个目标`);
+        
+        // 显示检测时间
+        displayDetectionTime(detectionTime);
+
+        // 清理
+        input.dispose();
+        predictions.dispose();
+
+      } catch (error) {
+        updateStatus(`检测失败: ${error.message}`);
+        console.error(error);
+      }
+    });
+
+    // 清除结果
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+      document.getElementById('imageUpload').value = '';
+      originalImage = null;
+      updateStatus('结果已清除');
+      document.getElementById('timeInfo').style.display = 'none';
+    });
+
+    // 显示检测时间
+    function displayDetectionTime(detectionTime) {
+      const timeInfoElement = document.getElementById('timeInfo');
+      timeInfoElement.innerHTML = `
+        <strong>检测时间统计:</strong><br>
+        总检测时间: ${detectionTime.toFixed(2)} 毫秒<br>
+        相当于: ${(detectionTime / 1000).toFixed(3)} 秒
+      `;
+      timeInfoElement.style.display = 'block';
+    }
+
+    // 工具函数
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    function preprocessImage(image) {
+      // 调整图片大小
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 640;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, 640, 640)
+
+      const inputData = ctx.getImageData(0, 0, 640, 640)
+      // console.log(inputData)
+      // ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      // 转换为张量
+      // const tensor = tf.browser.fromPixels(canvas)
+      //   .toFloat()
+      //   .div(tf.scalar(255));
+
+      // 添加批次维度
+      // return tensor.expandDims(0);
+      tf_img = tf.browser.fromPixels(inputData);
+      const imgData = tf_img.div(255.0).expandDims().toFloat();
+      console.log('imgData', imgData)
+      return imgData
+    }
+
+    function applyNMS(boxes, scores, classes, threshold = 0.5) {
+      const results = [];
+
+      // 示例处理逻辑（实际需根据模型输出调整）
+      for (let i = 0; i < scores.length; i++) {
+        if (scores[i] > 0.3) { // 置信度阈值
+          results.push({
+            box: boxes[i],
+            score: scores[i],
+            class: classes[i]
+          });
+        }
+      }
+
+      return results;
+    }
+
+    function drawResults(predictions) {
+      const canvas = document.getElementById('canvas');
+
+      // 重新绘制原始图片
+      canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+      canvasContext.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+
+      // 绘制检测框
+      predictions.forEach(pred => {
+        // const [x, y, w, h] = pred.box;
+        const [x1, y1, x2, y2] = pred.box;
+        const x = x1;
+        const y = y1;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        const score = Math.round(pred.score * 100);
+        const className = `类别${pred.class}`;
+
+        // 绘制矩形
+        canvasContext.strokeStyle = '#00FF00';
+        canvasContext.lineWidth = 2;
+        canvasContext.strokeRect(x - w / 2, y - h / 2, w, h);
+
+        // 绘制标签背景
+        // canvasContext.fillStyle = '#00FF00';
+        // canvasContext.fillRect(x - w / 2, y - h / 2 - 20, 150, 20);
+
+        // 绘制标签文字
+        // canvasContext.fillStyle = '#000000';
+        // canvasContext.font = '14px Arial';
+        // canvasContext.fillText(`${className} ${score}%`, x - w / 2 + 5, y - h / 2 - 5);
+      });
+    }
+
+    function updateStatus(message) {
+      document.getElementById('status').textContent = message;
+    }
+
+    // 修改 processYOLOv8Output 函数中的 NMS 部分
+    const processYOLOv8Output = async (outputPromise, imageWidth, imageHeight) => {
+      try {
+        const float32Array = await outputPromise;
+        console.log('解析后的 Float32Array:', float32Array);
+
+        const numBoxes = 8400;
+        const boxes = [];
+
+        for (let index = 0; index < numBoxes; index++) {
+          const [class_id, prob] = [...Array(classNames.length).keys()]
+            .map((col) => [col, float32Array[8400 * (col + 4) + index]])
+            .reduce((accum, item) => (item[1] > accum[1] ? item : accum), [0, 0]);
+
+          if (prob < 0.2) continue;
+
+          const label = classNames[class_id];
+          const xc = float32Array[index];
+          const yc = float32Array[8400 + index];
+          const w = float32Array[2 * 8400 + index];
+          const h = float32Array[3 * 8400 + index];
+          const x1 = ((xc - w / 2) / 640) * imageWidth;
+          const y1 = ((yc - h / 2) / 640) * imageHeight;
+          const x2 = ((xc + w / 2) / 640) * imageWidth;
+          const y2 = ((yc + h / 2) / 640) * imageHeight;
+
+          // 创建统一格式的对象
+          boxes.push({
+            box: [x1, y1, x2, y2],  // 坐标格式统一为 [x1, y1, x2, y2]
+            score: prob,
+            class: class_id,
+            label: label
+          });
+        }
+
+        console.log('检测到的框数量:', boxes.length);
+
+        // 修正的 IOU 计算函数
+        function calculateIOU(boxA, boxB) {
+          const [ax1, ay1, ax2, ay2] = boxA.box;  // 从对象中提取坐标
+          const [bx1, by1, bx2, by2] = boxB.box;
+
+          const xOverlap = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1));
+          const yOverlap = Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+          const overlapArea = xOverlap * yOverlap;
+
+          const areaA = (ax2 - ax1) * (ay2 - ay1);
+          const areaB = (bx2 - bx1) * (by2 - by1);
+          const unionArea = areaA + areaB - overlapArea;
+
+          return overlapArea / unionArea;
+        }
+
+        // 修正的 NMS 函数
+        function applyNMS(boxes, iouThreshold = 0.3) {
+          // 按置信度排序
+          boxes.sort((a, b) => b.score - a.score);
+          const keepBoxes = [];
+
+          while (boxes.length > 0) {
+            const currentBox = boxes[0];
+            keepBoxes.push(currentBox);
+
+            // 过滤掉与当前框重叠度高的框
+            boxes = boxes.filter(box => {
+              const iou = calculateIOU(currentBox, box);
+              return iou <= iouThreshold;
+            });
+          }
+
+          return keepBoxes;
+        }
+
+        const finalBoxes = applyNMS(boxes, 0.3);
+        console.log('NMS后保留的框数量:', finalBoxes.length);
+
+        return finalBoxes;
+
+      } catch (error) {
+        console.error('处理输出时出错:', error);
+        return [];
+      }
+    };
+
+    // 同时需要修改 drawResults 函数来适应新的数据结构
+    function drawResults(predictions) {
+      const canvas = document.getElementById('canvas');
+
+      // 重新绘制原始图片
+      canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+      canvasContext.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+
+      // 绘制检测框
+      predictions.forEach(pred => {
+        const [x1, y1, x2, y2] = pred.box;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        const score = Math.round(pred.score * 100);
+        const className = pred.label || `类别${pred.class}`;
+
+        // 绘制矩形
+        canvasContext.strokeStyle = '#00FF00';
+        canvasContext.lineWidth = 2;
+        canvasContext.strokeRect(x1, y1, w, h);
+
+        // 绘制标签背景
+        // canvasContext.fillStyle = '#00FF00';
+        // const textWidth = canvasContext.measureText(`${className} ${score}%`).width;
+        // canvasContext.fillRect(x1, y1 - 20, textWidth + 10, 20);
+
+        // // 绘制标签文字
+        // canvasContext.fillStyle = '#000000';
+        // canvasContext.font = '14px Arial';
+        // canvasContext.fillText(`${className} ${score}%`, x1 + 5, y1 - 5);
+      });
+    }
+
+    // 初始化
+    init();
+  </script>
+</body>
+
+</html>
